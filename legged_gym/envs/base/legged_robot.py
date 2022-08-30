@@ -108,9 +108,6 @@ class LeggedRobot(BaseTask):
 
         if self.cfg.cam.camera:           
 
-            # for i in range(self.num_envs):
-            #     cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
-
             """ # image directory
             img_dir = "interop_images"
             if not os.path.exists(img_dir):
@@ -127,7 +124,9 @@ class LeggedRobot(BaseTask):
             self.gym.render_all_camera_sensors(self.sim)
             self.gym.start_access_image_tensors(self.sim)
 
-            """ # if frame_no < 10000 and frame_no % 5 == 0:
+            """ for i in range(self.num_envs):
+                cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
+            # if frame_no < 10000 and frame_no % 5 == 0:
             for i in range(self.num_envs):
                 # write tensor to image
                 # fname = os.path.join(img_dir, "cam-%03d.png" % (i))
@@ -832,7 +831,7 @@ class LeggedRobot(BaseTask):
                 camera_handle = self.gym.create_camera_sensor(env_handle, camera_props)
                 # attach camera to robot
                 local_transform = gymapi.Transform()
-                local_transform.p = gymapi.Vec3(-1,0,1)     # a fixed offset from the rigid body
+                local_transform.p = gymapi.Vec3(0.25,0,0.1)     # a fixed offset from the rigid body
                 local_transform.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(0,1,0), np.radians(0.0))
                 # print(f"Cam Handle: {camera_handle}") # Prints -1
                 # self.body_handle = self.gym.get_actor_rigid_body_handle(env_handle, actor_handle, 0)
