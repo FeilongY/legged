@@ -31,9 +31,12 @@
 from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
+    class cam:
+        camera = True
+
     class env:
-        num_envs = 4096
-        num_observations = 235
+        num_envs = 2
+        num_observations = 335
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -54,12 +57,12 @@ class LeggedRobotCfg(BaseConfig):
         measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
         selected = False # select a unique terrain type and pass all arguments
-        terrain_kwargs = None # Dict of arguments for selected terrain
-        max_init_terrain_level = 5 # starting curriculum state
+        #terrain_kwargs = [0.5, 0.5]? # Dict of arguments for selected terrain
+        max_init_terrain_level = 1 # starting curriculum state
         terrain_length = 8.
         terrain_width = 8.
-        num_rows= 10 # number of terrain rows (levels)
-        num_cols = 20 # number of terrain cols (types)
+        num_rows= 4 # number of terrain rows (levels)
+        num_cols = 4 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
         terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2]
         # trimesh only:
@@ -79,7 +82,7 @@ class LeggedRobotCfg(BaseConfig):
 
     class init_state:
         pos = [0.0, 0.0, 1.] # x,y,z [m]
-        rot = [0.0, 0.0, 0.0, 1.0] # x,y,z,w [quat]
+        rot = [0.0, 0.0, 0.0, 1.] # x,y,z,w [quat]
         lin_vel = [0.0, 0.0, 0.0]  # x,y,z [m/s]
         ang_vel = [0.0, 0.0, 0.0]  # x,y,z [rad/s]
         default_joint_angles = { # target angles when action = 0.0
@@ -177,8 +180,8 @@ class LeggedRobotCfg(BaseConfig):
     # viewer camera:
     class viewer:
         ref_env = 0
-        pos = [10, 0, 6]  # [m]
-        lookat = [11., 5, 3.]  # [m]
+        pos = [0, 3, 2.5]  # [m]
+        lookat = [1., 5, 1.]  # [m]
 
     class sim:
         dt =  0.005
@@ -230,8 +233,8 @@ class LeggedRobotCfgPPO(BaseConfig):
     class runner:
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
-        num_steps_per_env = 24 # per iteration
-        max_iterations = 1500 # number of policy updates
+        num_steps_per_env = 240 # per iteration
+        max_iterations = 1 # number of policy updates
 
         # logging
         save_interval = 50 # check for potential saves every this many iterations

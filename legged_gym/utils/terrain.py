@@ -120,9 +120,14 @@ class Terrain:
         gap_size = 1. * difficulty
         pit_depth = 1. * difficulty
         if choice < self.proportions[0]:
+            '''
             if choice < self.proportions[0]/ 2:
                 slope *= -1
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
+            '''
+            # terrain_utils.discrete_obstacles_terrain(terrain, max_height=0.5, min_size=1., max_size=5., num_rects=20, platform_size=1.)
+            terrain_utils.stepping_stones_terrain(terrain, stone_size=0.5,
+                                                                stone_distance=1.5, max_height=2, platform_size=0., depth=0.)
         elif choice < self.proportions[1]:
             terrain_utils.pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.)
             terrain_utils.random_uniform_terrain(terrain, min_height=-0.05, max_height=0.05, step=0.005, downsampled_scale=0.2)

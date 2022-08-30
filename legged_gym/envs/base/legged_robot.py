@@ -34,6 +34,9 @@ from warnings import WarningMessage
 import numpy as np
 import os
 
+import cv2
+import imageio
+
 from isaacgym.torch_utils import *
 from isaacgym import gymtorch, gymapi, gymutil
 
@@ -47,6 +50,12 @@ from legged_gym.utils.terrain import Terrain
 from legged_gym.utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqrt_float
 from legged_gym.utils.helpers import class_to_dict
 from .legged_robot_config import LeggedRobotCfg
+
+import legged_gym.networks as networks
+import legged_gym.policies as policies
+
+
+# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class LeggedRobot(BaseTask):
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
@@ -85,14 +94,53 @@ class LeggedRobot(BaseTask):
         clip_actions = self.cfg.normalization.clip_actions
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
         # step physics and render each frame
-        self.render()
+        self.render()     
+
+
         for _ in range(self.cfg.control.decimation):
             self.torques = self._compute_torques(self.actions).view(self.torques.shape)
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
             self.gym.simulate(self.sim)
-            if self.device == 'cpu':
-                self.gym.fetch_results(self.sim, True)
+            # if self.device == 'cpu':
+            #     self.gym.fetch_results(self.sim, True)
+            self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
+
+        if self.cfg.cam.camera:           
+
+            for i in range(self.num_envs):
+                cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
+
+            """ # image directory
+            img_dir = "interop_images"
+            if not os.path.exists(img_dir):
+                os.mkdir(img_dir) """     
+
+            # refresh state data in the tensor
+
+            self.gym.refresh_rigid_body_state_tensor(self.sim)
+
+            self.gym.step_graphics(self.sim)
+
+
+            # # render sensors and refresh camera tensors
+            self.gym.render_all_camera_sensors(self.sim)
+            self.gym.start_access_image_tensors(self.sim)
+
+            # if frame_no < 10000 and frame_no % 5 == 0:
+            for i in range(self.num_envs):
+                # write tensor to image
+                # fname = os.path.join(img_dir, "cam-%03d.png" % (i))
+                # cam_img = self.gym.get_camera_image(self.sim, self.envs[i], self.camera_handles[i], gymapi.IMAGE_DEPTH)
+                cam_img = self.camera_tensors[i].detach().cpu().numpy()
+                # print('****************/n',i, cam_img)
+                cv2.waitKey(300)
+                cv2.imshow("env_{}".format(i+1), (cam_img*255).astype(np.uint8))
+                # imageio.imwrite(fname, (cam_img*255).astype(np.uint8))
+                # print("  Camera tensors shape:", len(self.camera_tensors))
+                
+            self.gym.end_access_image_tensors(self.sim)
+
         self.post_physics_step()
 
         # return clipped obs, clipped states (None), rewards, dones and infos
@@ -217,18 +265,98 @@ class LeggedRobot(BaseTask):
                                     self.dof_vel * self.obs_scales.dof_vel,
                                     self.actions
                                     ),dim=-1)
+        # print("  Torch self.obs_buf shape:", self.obs_buf.shape)
+        # print("g", self.projected_gravity, self.projected_gravity.shape)
+
         # add perceptive inputs if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
             self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+            # print("  Torch self.obs_buf device:", self.obs_buf.device)
+            # print("  Torch heights shape:", heights.shape)
+            # print("  Torch self.obs_buf shape:", self.obs_buf.shape)
         # add noise if needed
         if self.add_noise:
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
+            noise_scale_vec = self.noise_scale_vec[:235]
+            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * noise_scale_vec
+
+
+        # add camera tensors
+        if self.cfg.cam.camera:
+            """             
+            self.projection_matrix = []
+            self.view_matrix = []
+            for i in range(self.num_envs):
+                self.projection_matrix.append(np.matrix(self.gym.get_camera_proj_matrix(self.sim, self.envs[i], self.camera_handles[i])))
+                self.view_matrix.append(np.matrix(self.gym.get_camera_view_matrix(self.sim, self.envs[i], self.camera_handles[i]))) """
+
+            # Normalisation
+            
+        
+            self.base_type = networks.MLPBase
+            # params['net']['activation_func'] = torch.nn.Tanh
+            self.in_channels = 1
+
+            encoder = networks.LocoTransformerEncoder(
+                
+                in_channels=self.in_channels, #env.image_channels,
+                state_input_dim=self.obs_buf.shape[0],
+                hidden_shapes=(200,200),
+            )
+
+            
+            """ pf = policies.GaussianContPolicyLocoTransformer(
+                encoder=encoder,
+                state_input_shape=self.obs_buf.shape[0],
+                visual_input_shape=(1, 1024, 1024),
+                output_shape=335,
+                # **params["net"],
+                # **params["policy"]
+            )
+
+            vf = networks.LocoTransformer(
+                encoder=encoder,
+                state_input_shape=self.obs_buf.shape[0],
+                visual_input_shape=(1, 1024, 1024),
+                output_shape=1,
+                transformer_params=[(1,256),(1,256)],
+                append_hidden_shapes=(256,256),
+            ) """
+
+            if torch.cuda.is_available():
+                encoder.cuda()
+
+            self.features = torch.empty((self.num_envs, 335))
+            device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+            for i in range(self.num_envs):
+                img = self.camera_tensors[i].reshape(1,1,1024,1024)
+                obs = self.obs_buf[i]            
+                # print('img',img)
+                obs = obs.to(device)
+                img = img.to(device)
+                with torch.no_grad(): 
+                    visual_out, state_out = encoder(img, obs)
+                    # state_out = pf()
+                    # visual_out = vf()
+                # print('vo', visual_out.shape, 'so', state_out.shape)
+                # Normalization
+                # visual_out = networks.NormObsWithImg(visual_out)
+                self.features[i] = visual_out
+            self.obs_buf = torch.nan_to_num(self.features, nan=10.0)
+            
+            print('f',self.obs_buf[:,235:])
+             
+            # print('f',type(self.features), self.features.shape)
+
+
+
 
     def create_sim(self):
-        """ Creates simulation, terrain and evironments
+        """ Creates simulation, terrain and environments
         """
+        # self.sim_params.use_gpu_pipeline = True
         self.up_axis_idx = 2 # 2 for z, 1 for y -> adapt gravity accordingly
+        self.graphics_device_id = 0
         self.sim = self.gym.create_sim(self.sim_device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         mesh_type = self.cfg.terrain.mesh_type
         if mesh_type in ['heightfield', 'trimesh']:
@@ -475,6 +603,7 @@ class LeggedRobot(BaseTask):
         noise_vec[36:48] = 0. # previous actions
         if self.cfg.terrain.measure_heights:
             noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
+        noise_vec[236:] = 0. # camera input
         return noise_vec
 
     #----------------------------------------
@@ -663,11 +792,23 @@ class LeggedRobot(BaseTask):
         start_pose = gymapi.Transform()
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
+
+        camera_props = gymapi.CameraProperties()
+        camera_props.width = 1024
+        camera_props.height = 1024
+        camera_props.enable_tensors = True
+
         self._get_env_origins()
         env_lower = gymapi.Vec3(0., 0., 0.)
         env_upper = gymapi.Vec3(0., 0., 0.)
         self.actor_handles = []
         self.envs = []
+
+        # add camera sensor
+        self.camera_handles = []
+        self.camera_tensors = []
+        
+
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
@@ -685,6 +826,31 @@ class LeggedRobot(BaseTask):
             self.gym.set_actor_rigid_body_properties(env_handle, actor_handle, body_props, recomputeInertia=True)
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
+
+            if self.cfg.cam.camera:
+                # create camera instance               
+                camera_handle = self.gym.create_camera_sensor(env_handle, camera_props)
+                # attach camera to robot
+                local_transform = gymapi.Transform()
+                local_transform.p = gymapi.Vec3(-1,0,1)     # a fixed offset from the rigid body
+                local_transform.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(0,1,0), np.radians(0.0))
+                # print(f"Cam Handle: {camera_handle}") # Prints -1
+                # self.body_handle = self.gym.get_actor_rigid_body_handle(env_handle, actor_handle, 0)
+                self.gym.attach_camera_to_body(camera_handle, env_handle, actor_handle, local_transform, gymapi.FOLLOW_TRANSFORM)
+                
+                # print('handle', self.camera_handle)
+                self.camera_handles.append(camera_handle)
+        
+                # camera tensor
+                camera_tensor = self.gym.get_camera_image_gpu_tensor(self.sim, env_handle, camera_handle, gymapi.IMAGE_DEPTH)
+
+                # wrap camera tensor in a pytorch tensor
+                torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
+                # print("  Torch camera tensor device:", self.torch_camera_tensor.reshape(-1,).unsqueeze(0).shape)
+                # print("  Torch camera tensor shape:", self.torch_camera_tensor.shape)
+                # print("  Torch camera tensor", torch_camera_tensor)
+                self.camera_tensors.append(torch_camera_tensor)
+            
 
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
