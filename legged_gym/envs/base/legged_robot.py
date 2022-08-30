@@ -108,8 +108,8 @@ class LeggedRobot(BaseTask):
 
         if self.cfg.cam.camera:           
 
-            for i in range(self.num_envs):
-                cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
+            # for i in range(self.num_envs):
+            #     cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
 
             """ # image directory
             img_dir = "interop_images"
@@ -127,7 +127,7 @@ class LeggedRobot(BaseTask):
             self.gym.render_all_camera_sensors(self.sim)
             self.gym.start_access_image_tensors(self.sim)
 
-            # if frame_no < 10000 and frame_no % 5 == 0:
+            """ # if frame_no < 10000 and frame_no % 5 == 0:
             for i in range(self.num_envs):
                 # write tensor to image
                 # fname = os.path.join(img_dir, "cam-%03d.png" % (i))
@@ -137,7 +137,7 @@ class LeggedRobot(BaseTask):
                 cv2.waitKey(300)
                 cv2.imshow("env_{}".format(i+1), (cam_img*255).astype(np.uint8))
                 # imageio.imwrite(fname, (cam_img*255).astype(np.uint8))
-                # print("  Camera tensors shape:", len(self.camera_tensors))
+                # print("  Camera tensors shape:", len(self.camera_tensors)) """
                 
             self.gym.end_access_image_tensors(self.sim)
 
@@ -344,7 +344,7 @@ class LeggedRobot(BaseTask):
                 self.features[i] = visual_out
             self.obs_buf = torch.nan_to_num(self.features, nan=10.0)
             
-            print('f',self.obs_buf[:,235:])
+            # print('f',self.obs_buf[:,235:])
              
             # print('f',type(self.features), self.features.shape)
 
