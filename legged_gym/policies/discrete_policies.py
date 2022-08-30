@@ -2,7 +2,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
-import torchrl.networks as networks
+from legged_gym import LEGGED_GYM_ROOT_DIR
+import legged_gym.networks as networks
 
 
 class UniformPolicyDiscrete(nn.Module):

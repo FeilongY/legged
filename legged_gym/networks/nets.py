@@ -4,8 +4,9 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torchrl.networks.init as init
-import torchrl.networks.base as base
+from legged_gym import LEGGED_GYM_ROOT_DIR
+import legged_gym.networks.init as init
+import legged_gym.networks.base as base
 
 
 class ZeroNet(nn.Module):
