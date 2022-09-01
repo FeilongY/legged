@@ -334,7 +334,7 @@ class LeggedRobot(BaseTask):
             #     encoder.to(device)
             
             for i in range(self.num_envs):
-                img = self.camera_tensors[i].reshape(1,1,256,256)
+                img = self.camera_tensors[i].reshape(1,1,self.cfg.cam.width,self.cfg.cam.height)
                 # print('img', img.get_device())
                 obs = self.obs_buf[i,:235]     
                 # print('obs', obs.get_device())       
@@ -814,8 +814,8 @@ class LeggedRobot(BaseTask):
 
 
         camera_props = gymapi.CameraProperties()
-        camera_props.width = 256
-        camera_props.height = 256
+        camera_props.width = self.cfg.cam.width
+        camera_props.height = self.cfg.cam.height
         camera_props.enable_tensors = True
 
         self._get_env_origins()

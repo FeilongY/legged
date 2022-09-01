@@ -34,6 +34,8 @@ class LeggedRobotCfg(BaseConfig):
     class cam:
         camera = True
         num_obs_cam = 100
+        width = 256
+        height = 256
 
     class env:
         num_envs = 100
@@ -238,7 +240,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         max_iterations = 1500 # number of policy updates
 
         # logging
-        save_interval = 50 # check for potential saves every this many iterations
+        save_interval = 100 # check for potential saves every this many iterations
         experiment_name = 'test'
         run_name = ''
         # load and resume
