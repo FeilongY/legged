@@ -28,6 +28,7 @@
 #
 # Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
+from multiprocessing.resource_sharer import stop
 from legged_gym import LEGGED_GYM_ROOT_DIR
 import os
 
@@ -67,8 +68,8 @@ def play(args):
     logger = Logger(env.dt)
     robot_index = 0 # which robot is used for logging
     joint_index = 1 # which joint is used for logging
-    stop_state_log = 8 # number of steps before plotting states
-    stop_rew_log = 20#env.max_episode_length + 1 # number of steps before print average episode rewards
+    stop_state_log = 500 # number of steps before plotting states
+    stop_rew_log = env.max_episode_length -1 # env.max_episode_length + 1 # number of steps before print average episode rewards
     print('len',int(env.max_episode_length))
     camera_position = np.array(env_cfg.viewer.pos, dtype=np.float64)
     camera_vel = np.array([1., 1., 0.])
@@ -76,7 +77,7 @@ def play(args):
     img_idx = 0
 
     for i in range(int(env.max_episode_length)): # 10*int(env.max_episode_length
-        print('i', i)
+        # print('i', i)
         obs.to('cuda:0')
         actions = policy(obs.detach())
         obs, _, rews, dones, infos = env.step(actions.detach())

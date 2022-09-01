@@ -32,14 +32,14 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class cam:
-        camera = False
+        camera = True
         num_obs_cam = 100
         width = 256
         height = 256
 
     class env:
-        num_envs = 300
-        num_observations = 235
+        num_envs = 30
+        num_observations = 335
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -237,10 +237,10 @@ class LeggedRobotCfgPPO(BaseConfig):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 1500 # number of policy updates
+        max_iterations = 150 # number of policy updates
 
         # logging
-        save_interval = 100 # check for potential saves every this many iterations
+        save_interval = 150 # check for potential saves every this many iterations
         experiment_name = 'test'
         run_name = ''
         # load and resume

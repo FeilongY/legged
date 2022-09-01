@@ -335,7 +335,9 @@ class LeggedRobot(BaseTask):
             
             for i in range(self.num_envs):
                 img = self.camera_tensors[i].reshape(1,1,self.cfg.cam.width,self.cfg.cam.height)
-                # print('img', img.get_device())
+                img[img == float("-Inf")] = -10
+                # print('img', img)
+                # print('ten', self.camera_tensors[i])
                 obs = self.obs_buf[i,:235]     
                 # print('obs', obs.get_device())       
                 # print('img',img)
@@ -347,8 +349,7 @@ class LeggedRobot(BaseTask):
                     # visual_out = vf()
                 # print('vo', visual_out.shape, 'so', state_out.shape)
                 # Normalization
-                # visual_out = networks.NormObsWithImg(visual_out)
-                visual_out = torch.nan_to_num(visual_out, nan=10.0)      
+                # visual_out = networks.NormObsWithImg(visual_out)     
                 self.obs_buf[i] = visual_out
                 # print('f',i, self.obs_buf[:,235:])    
             
