@@ -39,6 +39,8 @@ from legged_gym.utils import  get_args, export_policy_as_jit, task_registry, Log
 import numpy as np
 import torch
 
+import matplotlib.pyplot as plt
+
 
 def play(args):
     env_cfg, train_cfg = task_registry.get_cfgs(name=args.task)
@@ -76,11 +78,15 @@ def play(args):
     camera_direction = np.array(env_cfg.viewer.lookat) - np.array(env_cfg.viewer.pos)
     img_idx = 0
 
-    for i in range(int(env.max_episode_length)): # 10*int(env.max_episode_length
+    rwd = []
+    idx = []
+
+    for i in range(100):#int(env.max_episode_length)): # 10*int(env.max_episode_length
         # print('i', i)
         obs.to('cuda:0')
         actions = policy(obs.detach())
         obs, _, rews, dones, infos = env.step(actions.detach())
+        # print(rews)
         if RECORD_FRAMES:
             if i % 2:
                 filename = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'frames', f"{img_idx}.png")
@@ -116,6 +122,15 @@ def play(args):
                     logger.log_rewards(infos["episode"], num_episodes)
         elif i==stop_rew_log:
             logger.print_rewards()
+        
+        idx.append(i+1)
+        rew = rews.detach().cpu().numpy()
+        print(rew)
+        rwd.append(rew)
+        # plt.plot(rew)
+    # print(rwd)
+    
+    
 
 if __name__ == '__main__':
     EXPORT_POLICY = True
