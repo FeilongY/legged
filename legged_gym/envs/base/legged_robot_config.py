@@ -32,14 +32,14 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class cam:
-        camera = True
+        camera = False
         num_obs_cam = 100
         width = 256
         height = 256
 
     class env:
-        num_envs = 100
-        num_observations = 335
+        num_envs = 300
+        num_observations = 235
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
