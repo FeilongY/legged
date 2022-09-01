@@ -97,11 +97,14 @@ class Terrain:
             # Env coordinates in the world
             (i, j) = np.unravel_index(k, (self.cfg.num_rows, self.cfg.num_cols))
 
-            terrain = terrain_utils.SubTerrain("terrain",
+            terrain = terrain_utils.stepping_stones_terrain(terrain, stone_size=0.5,
+                                                                stone_distance=0.5, max_height=2, platform_size=0., depth=0.)
+
+            """ terrain = terrain_utils.SubTerrain("terrain",
                               width=self.width_per_env_pixels,
                               length=self.width_per_env_pixels,
                               vertical_scale=self.vertical_scale,
-                              horizontal_scale=self.horizontal_scale)
+                              horizontal_scale=self.horizontal_scale) """
 
             eval(terrain_type)(terrain, **self.cfg.terrain_kwargs.terrain_kwargs)
             self.add_terrain_to_map(terrain, i, j)
@@ -119,7 +122,7 @@ class Terrain:
         stone_distance = 0.05 if difficulty==0 else 0.1
         gap_size = 1. * difficulty
         pit_depth = 1. * difficulty
-        if choice < self.proportions[0]:
+        if choice < 0.2: #self.proportions[0]:
             '''
             if choice < self.proportions[0]/ 2:
                 slope *= -1
