@@ -70,7 +70,7 @@ def play(args):
     logger = Logger(env.dt)
     robot_index = 0 # which robot is used for logging
     joint_index = 1 # which joint is used for logging
-    stop_state_log = 500 # number of steps before plotting states
+    stop_state_log = 950 # number of steps before plotting states
     stop_rew_log = env.max_episode_length -1 # env.max_episode_length + 1 # number of steps before print average episode rewards
     print('len',int(env.max_episode_length))
     camera_position = np.array(env_cfg.viewer.pos, dtype=np.float64)
@@ -81,12 +81,13 @@ def play(args):
     rwd = []
     idx = []
 
-    for i in range(100):#int(env.max_episode_length)): # 10*int(env.max_episode_length
-        # print('i', i)
+    for i in range(2*int(env.max_episode_length)): # 10*int(env.max_episode_length       
         obs.to('cuda:0')
         actions = policy(obs.detach())
         obs, _, rews, dones, infos = env.step(actions.detach())
-        # print(rews)
+        if i%100 == 0:
+            print('i', i)
+            print('rew',rews)
         if RECORD_FRAMES:
             if i % 2:
                 filename = os.path.join(LEGGED_GYM_ROOT_DIR, 'logs', train_cfg.runner.experiment_name, 'exported', 'frames', f"{img_idx}.png")
@@ -123,17 +124,17 @@ def play(args):
         elif i==stop_rew_log:
             logger.print_rewards()
         
-        idx.append(i+1)
-        rew = rews.detach().cpu().numpy()
-        print(rew)
-        rwd.append(rew)
+        # idx.append(i+1)
+        # rew = rews.detach().cpu().numpy()
+        # # print(rew)
+        # rwd.append(rew)
         # plt.plot(rew)
     # print(rwd)
     
     
 
 if __name__ == '__main__':
-    EXPORT_POLICY = True
+    EXPORT_POLICY = False
     RECORD_FRAMES = False
     MOVE_CAMERA = False
     args = get_args()
