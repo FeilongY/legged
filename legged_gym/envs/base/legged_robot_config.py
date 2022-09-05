@@ -34,8 +34,8 @@ class LeggedRobotCfg(BaseConfig):
     class cam:
         camera = False
         num_obs_cam = 100
-        width = 256
-        height = 256
+        width = 128
+        height = 128
 
     class env:
         num_envs = 500
@@ -237,7 +237,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 901 # number of policy updates
+        max_iterations = 900 # number of policy updates
 
         # logging
         save_interval = 150 # check for potential saves every this many iterations
