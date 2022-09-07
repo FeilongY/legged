@@ -33,7 +33,7 @@ from .base_config import BaseConfig
 class LeggedRobotCfg(BaseConfig):
     class cam:
         camera = False
-        monitor = False
+        monitor = True
         num_obs_cam = 100
         width = 128
         height = 128
