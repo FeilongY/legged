@@ -81,7 +81,7 @@ def play(args):
     rwd = []
     idx = []
 
-    for i in range(2*int(env.max_episode_length)): # 10*int(env.max_episode_length       
+    for i in range(10*int(env.max_episode_length)): # 10*int(env.max_episode_length       
         obs.to('cuda:0')
         actions = policy(obs.detach())
         obs, _, rews, dones, infos = env.step(actions.detach())
