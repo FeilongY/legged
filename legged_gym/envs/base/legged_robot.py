@@ -34,9 +34,6 @@ from warnings import WarningMessage
 import numpy as np
 import os
 
-# import cv2
-# import imageio
-
 from isaacgym.torch_utils import *
 from isaacgym import gymtorch, gymapi, gymutil
 
@@ -124,21 +121,23 @@ class LeggedRobot(BaseTask):
             self.gym.render_all_camera_sensors(self.sim)
             self.gym.start_access_image_tensors(self.sim)
 
-
-            # if not self.headless:
-            #     for i in range(self.num_envs):
-            #         cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
-            #     # if frame_no < 10000 and frame_no % 5 == 0:
-            #     for i in range(self.num_envs):
-            #         # write tensor to image
-            #         # fname = os.path.join(img_dir, "cam-%03d.png" % (i))
-            #         # cam_img = self.gym.get_camera_image(self.sim, self.envs[i], self.camera_handles[i], gymapi.IMAGE_DEPTH)
-            #         cam_img = self.camera_tensors[i].detach().cpu().numpy()
-            #         # print('****************/n',i, cam_img)
-            #         cv2.waitKey(300)
-            #         cv2.imshow("env_{}".format(i+1), (cam_img*255).astype(np.uint8))
-            #         # imageio.imwrite(fname, (cam_img*255).astype(np.uint8))
-            #         # print("  Camera tensors shape:", len(self.camera_tensors))
+            
+            if self.cfg.cam.monitor and not self.headless:
+                import cv2
+                import imageio
+                for i in range(self.num_envs):
+                    cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
+                # if frame_no < 10000 and frame_no % 5 == 0:
+                for i in range(self.num_envs):
+                    # write tensor to image
+                    # fname = os.path.join(img_dir, "cam-%03d.png" % (i))
+                    # cam_img = self.gym.get_camera_image(self.sim, self.envs[i], self.camera_handles[i], gymapi.IMAGE_DEPTH)
+                    cam_img = self.camera_tensors[i].detach().cpu().numpy()
+                    # print('****************/n',i, cam_img)
+                    cv2.waitKey(300)
+                    cv2.imshow("env_{}".format(i+1), (cam_img*255).astype(np.uint8))
+                    # imageio.imwrite(fname, (cam_img*255).astype(np.uint8))
+                    # print("  Camera tensors shape:", len(self.camera_tensors))
                 
             self.gym.end_access_image_tensors(self.sim)
 
@@ -814,10 +813,16 @@ class LeggedRobot(BaseTask):
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
 
-        camera_props = gymapi.CameraProperties()
-        camera_props.width = self.cfg.cam.width
-        camera_props.height = self.cfg.cam.height
-        camera_props.enable_tensors = True
+        # add camera properties
+        if self.cfg.cam.camera:
+            camera_props = gymapi.CameraProperties()
+            camera_props.width = self.cfg.cam.width
+            camera_props.height = self.cfg.cam.height
+            camera_props.enable_tensors = True
+
+            # add camera sensor
+            self.camera_handles = []
+            self.camera_tensors = []
 
         self._get_env_origins()
         env_lower = gymapi.Vec3(0., 0., 0.)
@@ -825,11 +830,7 @@ class LeggedRobot(BaseTask):
         self.actor_handles = []
         self.envs = []
 
-        # add camera sensor
-        self.camera_handles = []
-        self.camera_tensors = []
         
-
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
@@ -854,7 +855,7 @@ class LeggedRobot(BaseTask):
                 # attach camera to robot
                 local_transform = gymapi.Transform()
                 local_transform.p = gymapi.Vec3(0.25,0,0.1)     # a fixed offset from the rigid body
-                local_transform.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(0,1,0), np.radians(0.0))
+                local_transform.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(1,0,0), np.radians(0.0))
                 # print(f"Cam Handle: {camera_handle}") # Prints -1
                 # self.body_handle = self.gym.get_actor_rigid_body_handle(env_handle, actor_handle, 0)
                 self.gym.attach_camera_to_body(camera_handle, env_handle, actor_handle, local_transform, gymapi.FOLLOW_TRANSFORM)

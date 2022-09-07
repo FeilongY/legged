@@ -33,12 +33,13 @@ from .base_config import BaseConfig
 class LeggedRobotCfg(BaseConfig):
     class cam:
         camera = False
+        monitor = False
         num_obs_cam = 100
         width = 128
         height = 128
 
     class env:
-        num_envs = 500
+        num_envs = 1000
         num_observations = 235
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
@@ -66,8 +67,9 @@ class LeggedRobotCfg(BaseConfig):
         terrain_width = 8.
         num_rows= 10 # number of terrain rows (levels)
         num_cols = 20 # number of terrain cols (types)
-        # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
-        terrain_proportions = [0.1, 0.1, 0.35, 0.25, 0.2]
+        # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete obstacles, stepping stones, gap, pit]
+        # terrain_proportions = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+        terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
 
@@ -183,8 +185,8 @@ class LeggedRobotCfg(BaseConfig):
     # viewer camera:
     class viewer:
         ref_env = 0
-        pos = [0, 3, 2.5]  # [m]
-        lookat = [1., 5, 1.]  # [m]
+        pos = [50, 73, 2.5]  # [m]
+        lookat = [51., 75, 1.]  # [m]
 
     class sim:
         dt =  0.005
