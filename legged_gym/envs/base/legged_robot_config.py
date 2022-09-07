@@ -33,7 +33,7 @@ from .base_config import BaseConfig
 class LeggedRobotCfg(BaseConfig):
     class cam:
         camera = True
-        monitor = True
+        monitor = False
         num_obs_cam = 100
         width = 128
         height = 128
@@ -185,8 +185,8 @@ class LeggedRobotCfg(BaseConfig):
     # viewer camera:
     class viewer:
         ref_env = 0
-        pos = [50, 73, 2.5]  # [m]
-        lookat = [51., 75, 1.]  # [m]
+        pos = [30, 33, 2.5]  # [m]
+        lookat = [31., 35, 1.]  # [m]
 
     class sim:
         dt =  0.005
