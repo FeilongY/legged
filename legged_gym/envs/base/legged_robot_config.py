@@ -39,7 +39,7 @@ class LeggedRobotCfg(BaseConfig):
         height = 128
 
     class env:
-        num_envs = 500
+        num_envs = 2000
         num_observations = 235
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
@@ -66,7 +66,7 @@ class LeggedRobotCfg(BaseConfig):
         terrain_length = 8.
         terrain_width = 8.
         num_rows= 10 # number of terrain rows (levels)
-        num_cols = 2 # number of terrain cols (types)
+        num_cols = 20 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete obstacles, stepping stones, gap, pit]
         terrain_proportions = [0., 0., 0., 0., 0., 1., 0., 0.]
         # terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
@@ -239,7 +239,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 900 # number of policy updates
+        max_iterations = 1200 # number of policy updates
 
         # logging
         save_interval = 150 # check for potential saves every this many iterations
