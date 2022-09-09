@@ -86,6 +86,8 @@ class LeggedRobot(BaseTask):
         self._init_buffers()
         self._prepare_reward_function()
         self.init_done = True
+
+        # add pre-trained CNN
         if self.cfg.cam.camera:
             class FeatureExtractor(nn.Module):
                 def __init__(self, model):
@@ -111,10 +113,7 @@ class LeggedRobot(BaseTask):
                     out = self.fc2(out) 
                     out = self.fc3(out)  
                     return out 
-
-
-            
-            
+   
             # Initialize the model
             model = models.vgg16(pretrained=True)
             self.new_model = FeatureExtractor(model)
@@ -144,6 +143,7 @@ class LeggedRobot(BaseTask):
             self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
 
+        # render cameras and fetch tensors
         if self.cfg.cam.camera:           
 
             """ # image directory
@@ -162,6 +162,7 @@ class LeggedRobot(BaseTask):
             self.gym.render_all_camera_sensors(self.sim)
             self.gym.start_access_image_tensors(self.sim)
 
+            # show camera image if monitor==True
             if self.cfg.cam.monitor and not self.headless:
                 import cv2
                 import imageio
@@ -321,33 +322,30 @@ class LeggedRobot(BaseTask):
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * noise_scale_vec
 
 
-        # add camera tensors
+        # read camera tensors
         if self.cfg.cam.camera:
-
+            # increase obs_buffer size to integrate camera input
             zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam)
             zeros = zeros.to(self.device)
             self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
 
 
-            
-
-           
-
-            # Will contain the feature
-            features = []
-
-            # Iterate each image
+            # Iterate each image for each robot
             for i in range(self.num_envs):
-                # print('t',i,self.camera_tensors[i])
+                # read image
                 img = self.camera_tensors[i].reshape(1,self.cfg.cam.width,self.cfg.cam.height)
+                # convert -inf to num
                 img[img == float("-Inf")] = -50
                 # print('t',img.shape)
+                # softmax normalization
                 softmax = torch.nn.Softmax(dim = 1)
+                # convert to 3 channels to match vgg16 input requirement
                 img = torch.cat([img, img, img], dim=0)
                 # print('re',img)                
                 img = softmax(img)
                 # print(img)
                 # print(img[1].sum())
+                # transform to match vgg16 input requirement
                 transform1 = transforms.Compose([
                         transforms.Scale(256),
                         transforms.RandomCrop(224),
@@ -369,6 +367,7 @@ class LeggedRobot(BaseTask):
                 # Extract the feature from the image
                     feature = self.new_model(img)
                 # print(feature.shape)
+                # add feature to obs_buf
                 self.obs_buf[i,235:] = feature
                 # print(self.obs_buf[i,235:])
 
@@ -859,6 +858,7 @@ class LeggedRobot(BaseTask):
             self.envs.append(env_handle)
             self.actor_handles.append(actor_handle)
 
+            # add camera sensors
             if self.cfg.cam.camera:
                 # create camera instance               
                 camera_handle = self.gym.create_camera_sensor(env_handle, camera_props)
