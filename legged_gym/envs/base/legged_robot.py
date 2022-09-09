@@ -86,6 +86,42 @@ class LeggedRobot(BaseTask):
         self._init_buffers()
         self._prepare_reward_function()
         self.init_done = True
+        if self.cfg.cam.camera:
+            class FeatureExtractor(nn.Module):
+                def __init__(self, model):
+                    super(FeatureExtractor, self).__init__()
+                        # Extract VGG-16 Feature Layers
+                    self.features = list(model.features)
+                    self.features = nn.Sequential(*self.features)
+                        # Extract VGG-16 Average Pooling Layer
+                    self.pooling = model.avgpool
+                        # Convert the image into one-dimensional vector
+                    self.flatten = nn.Flatten()
+                        # Extract the first part of fully-connected layer from VGG16
+                    self.fc = model.classifier[0]
+                    self.fc2 = model.classifier[3]
+                    self.fc3 = model.classifier[6]
+                
+                def forward(self, x):
+                        # It will take the input 'x' until it returns the feature vector called 'out'
+                    out = self.features(x)
+                    out = self.pooling(out)
+                    out = self.flatten(out)
+                    out = self.fc(out)
+                    out = self.fc2(out) 
+                    out = self.fc3(out)  
+                    return out 
+
+
+            
+            
+            # Initialize the model
+            model = models.vgg16(pretrained=True)
+            self.new_model = FeatureExtractor(model)
+            # Change the device to GPU
+            # device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+            self.new_model = self.new_model.to(self.device)
+
 
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
@@ -346,42 +382,6 @@ class LeggedRobot(BaseTask):
         # self.graphics_device_id = 0
         # global graphics_device_id
         # print('gpu', self.graphics_device_id)
-        if self.cfg.cam.camera:
-            class FeatureExtractor(nn.Module):
-                def __init__(self, model):
-                    super(FeatureExtractor, self).__init__()
-                        # Extract VGG-16 Feature Layers
-                    self.features = list(model.features)
-                    self.features = nn.Sequential(*self.features)
-                        # Extract VGG-16 Average Pooling Layer
-                    self.pooling = model.avgpool
-                        # Convert the image into one-dimensional vector
-                    self.flatten = nn.Flatten()
-                        # Extract the first part of fully-connected layer from VGG16
-                    self.fc = model.classifier[0]
-                    self.fc2 = model.classifier[3]
-                    self.fc3 = model.classifier[6]
-                
-                def forward(self, x):
-                        # It will take the input 'x' until it returns the feature vector called 'out'
-                    out = self.features(x)
-                    out = self.pooling(out)
-                    out = self.flatten(out)
-                    out = self.fc(out)
-                    out = self.fc2(out) 
-                    out = self.fc3(out)  
-                    return out 
-
-
-            
-            
-            # Initialize the model
-            model = models.vgg16(pretrained=True)
-            self.new_model = FeatureExtractor(model)
-            # Change the device to GPU
-            # device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
-            self.new_model = self.new_model.to(self.device)
-
 
 
         self.up_axis_idx = 2 # 2 for z, 1 for y -> adapt gravity accordingly
