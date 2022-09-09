@@ -28,7 +28,6 @@
 #
 # Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
-from re import T
 from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
@@ -41,7 +40,7 @@ class LeggedRobotCfg(BaseConfig):
 
     class env:
         num_envs = 2000
-        num_observations = 48 #235
+        num_observations = 235 #235 or 48
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -58,7 +57,7 @@ class LeggedRobotCfg(BaseConfig):
         dynamic_friction = 1.0
         restitution = 0.
         # rough terrain only:
-        measure_heights = False
+        measure_heights = True
         measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
         selected = False # select a unique terrain type and pass all arguments
@@ -69,7 +68,7 @@ class LeggedRobotCfg(BaseConfig):
         num_rows= 10 # number of terrain rows (levels)
         num_cols = 20 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete obstacles, stepping stones, gap, pit]
-        terrain_proportions = [0., 0., 0., 0., 0., 1., 0., 0.]
+        terrain_proportions = [0., 0., 1., 0., 0., 0., 0., 0.]
         # terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
@@ -240,7 +239,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         policy_class_name = 'ActorCritic'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 600 # number of policy updates
+        max_iterations = 1500 # number of policy updates
 
         # logging
         save_interval = 150 # check for potential saves every this many iterations

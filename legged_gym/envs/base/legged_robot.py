@@ -48,13 +48,13 @@ from legged_gym.utils.math import quat_apply_yaw, wrap_to_pi, torch_rand_sqrt_fl
 from legged_gym.utils.helpers import class_to_dict
 from .legged_robot_config import LeggedRobotCfg
 
-import legged_gym.networks as networks
-import legged_gym.policies as policies
+# import legged_gym.networks as networks
+# import legged_gym.policies as policies
 
 
 from torch import optim, nn
 from torchvision import models, transforms
-import numpy as np
+
 
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
