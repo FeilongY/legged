@@ -338,13 +338,15 @@ class LeggedRobot(BaseTask):
 
             # Iterate each image
             for i in range(self.num_envs):
+                # print('t',i,self.camera_tensors[i])
                 img = self.camera_tensors[i].reshape(1,self.cfg.cam.width,self.cfg.cam.height)
+                img[img == float("-Inf")] = -50
                 # print('t',img.shape)
-                img = torch.cat([img, img, img], dim=0)
-                # print('re',img.shape)
                 softmax = torch.nn.Softmax(dim = 1)
+                img = torch.cat([img, img, img], dim=0)
+                # print('re',img)                
                 img = softmax(img)
-                # print(img[1])
+                # print(img)
                 # print(img[1].sum())
                 transform1 = transforms.Compose([
                         transforms.Scale(256),

@@ -23,8 +23,8 @@ def plot(runname):
         reward.append(line)
 
     # display list
-    print(reward)
+    plt.plot(reward)
 
-plot('Sep09_04-16-21_stairup')
+plot('Sep09_11-42-34_do')
 
 
