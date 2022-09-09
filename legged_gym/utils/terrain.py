@@ -186,6 +186,7 @@ def gap_terrain(terrain, difficulty, gap_size, platform_size=1.):
     x2 = x1 + gap_size
     y1 = (terrain.width - platform_size) // 2
     y2 = y1 + gap_size
+    # print('tl', terrain.length)
 
     if (10*difficulty+1) % 3 == 1:
         terrain.height_field_raw[center_x-30 : center_x + 30, center_y-30 : center_y + 30] = -1000

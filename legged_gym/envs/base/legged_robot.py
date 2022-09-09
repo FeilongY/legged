@@ -306,7 +306,7 @@ class LeggedRobot(BaseTask):
                                     self.dof_vel * self.obs_scales.dof_vel,
                                     self.actions
                                     ),dim=-1)
-        # print("  Torch self.obs_buf shape:", self.obs_buf.shape)
+        #  print("  Torch self.obs_buf shape:", self.obs_buf.shape)
         # print("g", self.projected_gravity, self.projected_gravity.shape)
 
         # add perceptive inputs if not blind
