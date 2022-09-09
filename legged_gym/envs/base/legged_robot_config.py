@@ -32,15 +32,15 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class cam:
-        camera = True
+        camera = False
         monitor = False
-        num_obs_cam = 100
+        num_obs_cam = 1000
         width = 128
         height = 128
 
     class env:
-        num_envs = 1000
-        num_observations = 335
+        num_envs = 100
+        num_observations = 235
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -66,9 +66,9 @@ class LeggedRobotCfg(BaseConfig):
         terrain_length = 8.
         terrain_width = 8.
         num_rows= 10 # number of terrain rows (levels)
-        num_cols = 20 # number of terrain cols (types)
+        num_cols = 2 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete obstacles, stepping stones, gap, pit]
-        terrain_proportions = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]
+        terrain_proportions = [0., 0., 1., 0., 0., 0., 0., 0.]
         # terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
@@ -151,7 +151,7 @@ class LeggedRobotCfg(BaseConfig):
             collision = -1.
             feet_stumble = -0.0 
             action_rate = -0.01
-            stand_still = -0.
+            stand_still = -0.2
 
         only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
@@ -185,8 +185,8 @@ class LeggedRobotCfg(BaseConfig):
     # viewer camera:
     class viewer:
         ref_env = 0
-        pos = [30, 33, 2.5]  # [m]
-        lookat = [31., 35, 1.]  # [m]
+        pos = [10, 3, 2.5]  # [m]
+        lookat = [11., 5, 1.]  # [m]
 
     class sim:
         dt =  0.005

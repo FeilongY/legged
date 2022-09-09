@@ -52,6 +52,11 @@ import legged_gym.networks as networks
 import legged_gym.policies as policies
 
 
+from torch import optim, nn
+from torchvision import models, transforms
+import numpy as np
+
+
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class LeggedRobot(BaseTask):
@@ -121,7 +126,6 @@ class LeggedRobot(BaseTask):
             self.gym.render_all_camera_sensors(self.sim)
             self.gym.start_access_image_tensors(self.sim)
 
-            
             if self.cfg.cam.monitor and not self.headless:
                 import cv2
                 import imageio
@@ -283,84 +287,52 @@ class LeggedRobot(BaseTask):
 
         # add camera tensors
         if self.cfg.cam.camera:
-            """             
-            self.projection_matrix = []
-            self.view_matrix = []
-            for i in range(self.num_envs):
-                self.projection_matrix.append(np.matrix(self.gym.get_camera_proj_matrix(self.sim, self.envs[i], self.camera_handles[i])))
-                self.view_matrix.append(np.matrix(self.gym.get_camera_view_matrix(self.sim, self.envs[i], self.camera_handles[i]))) """
 
-            
             zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam)
             zeros = zeros.to(self.device)
             self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
-            
-        
-            self.base_type = networks.MLPBase
-            # params['net']['activation_func'] = torch.nn.Tanh
-            self.in_channels = 1
 
-            encoder = networks.LocoTransformerEncoder(
-                
-                in_channels=self.in_channels, #env.image_channels,
-                state_input_dim=self.obs_buf.shape[0],
-                hidden_shapes=(200,200),
-            )
 
             
-            """ pf = policies.GaussianContPolicyLocoTransformer(
-                encoder=encoder,
-                state_input_shape=self.obs_buf.shape[0],
-                visual_input_shape=(1, 1024, 1024),
-                output_shape=335,
-                # **params["net"],
-                # **params["policy"]
-            )
 
-            vf = networks.LocoTransformer(
-                encoder=encoder,
-                state_input_shape=self.obs_buf.shape[0],
-                visual_input_shape=(1, 1024, 1024),
-                output_shape=1,
-                transformer_params=[(1,256),(1,256)],
-                append_hidden_shapes=(256,256),
-            ) """
+           
 
-            # device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+            # Will contain the feature
+            features = []
 
-            if torch.cuda.is_available():
-                encoder.cuda()
-            #     encoder.to(device)
-            
+            # Iterate each image
             for i in range(self.num_envs):
-                img = self.camera_tensors[i].reshape(1,1,self.cfg.cam.width,self.cfg.cam.height)
-                img[img == float("-Inf")] = -10
-                # print('img', img)
-                # print('ten', self.camera_tensors[i])
-                obs = self.obs_buf[i,:235]     
-                # print('obs', obs.get_device())       
-                # print('img',img)
-                # obs = obs.to(device)
-                # img = img.to(device)
-                with torch.no_grad(): 
-                    visual_out, state_out = encoder(img, obs)
-                    # state_out = pf()
-                    # visual_out = vf()
-                # print('vo', visual_out.shape, 'so', state_out.shape)
-                # Normalization
-                # visual_out = networks.NormObsWithImg(visual_out)     
-                self.obs_buf[i] = visual_out
-                # print('f',i, self.obs_buf[:,235:])    
-            
-            
-
-            # self.obs_buf.to(device)
-            # print('obs2', self.obs_buf.get_device())
-            # print('f',self.obs_buf[:,:20])
-
-            # print('f',self.obs_buf[:,235:])
-             
-            # print('f',type(self.features), self.features.shape)
+                img = self.camera_tensors[i].reshape(1,self.cfg.cam.width,self.cfg.cam.height)
+                # print('t',img.shape)
+                img = torch.cat([img, img, img], dim=0)
+                # print('re',img.shape)
+                softmax = torch.nn.Softmax(dim = 1)
+                img = softmax(img)
+                # print(img[1])
+                # print(img[1].sum())
+                transform1 = transforms.Compose([
+                        transforms.Scale(256),
+                        transforms.RandomCrop(224),
+                        transforms.RandomHorizontalFlip(),
+                        #transforms.ToTensor(), 
+                        transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                            std=[0.229, 0.224, 0.225])])
+                img = transform1(img)
+                # print('n',img.shape)
+                # a = img
+                # print(a)
+                # print(torch.mean(a))
+                # Reshape the image. PyTorch model reads 4-dimensional tensor
+                # [batch_size, channels, width, height]
+                img = img.reshape(1, 3, 224, 224)
+                img = img.to(self.device)
+                # We only extract features, so we don't need gradient
+                with torch.no_grad():
+                # Extract the feature from the image
+                    feature = self.new_model(img)
+                # print(feature.shape)
+                self.obs_buf[i,235:] = feature
+                # print(self.obs_buf[i,235:])
 
 
 
@@ -374,6 +346,41 @@ class LeggedRobot(BaseTask):
         # self.graphics_device_id = 0
         # global graphics_device_id
         # print('gpu', self.graphics_device_id)
+        class FeatureExtractor(nn.Module):
+            def __init__(self, model):
+                super(FeatureExtractor, self).__init__()
+                    # Extract VGG-16 Feature Layers
+                self.features = list(model.features)
+                self.features = nn.Sequential(*self.features)
+                    # Extract VGG-16 Average Pooling Layer
+                self.pooling = model.avgpool
+                    # Convert the image into one-dimensional vector
+                self.flatten = nn.Flatten()
+                    # Extract the first part of fully-connected layer from VGG16
+                self.fc = model.classifier[0]
+                self.fc2 = model.classifier[3]
+                self.fc3 = model.classifier[6]
+            
+            def forward(self, x):
+                    # It will take the input 'x' until it returns the feature vector called 'out'
+                out = self.features(x)
+                out = self.pooling(out)
+                out = self.flatten(out)
+                out = self.fc(out)
+                out = self.fc2(out) 
+                out = self.fc3(out)  
+                return out 
+
+
+        
+
+        # Initialize the model
+        model = models.vgg16(pretrained=True)
+        self.new_model = FeatureExtractor(model)
+        # Change the device to GPU
+        # device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+        self.new_model = self.new_model.to(self.device)
+
 
 
         self.up_axis_idx = 2 # 2 for z, 1 for y -> adapt gravity accordingly
