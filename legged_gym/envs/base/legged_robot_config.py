@@ -39,7 +39,7 @@ class LeggedRobotCfg(BaseConfig):
         height = 128
 
     class env:
-        num_envs = 2000
+        num_envs = 1000
         num_observations = 1235
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
