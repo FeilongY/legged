@@ -333,12 +333,36 @@ class LeggedRobot(BaseTask):
             zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam)
             zeros = zeros.to(self.device)
             self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
-            cam = torch.stack((self.camera_tensors))
-            img = cam.reshape(self.num_envs, self.cfg.cam.width*self.cfg.cam.height)
-            # print('i',img)
-            # convert -inf to num
-            img[img == float("-Inf")] = -50
-            self.obs_buf[:,48:] = img
+        #     cam = torch.stack((self.camera_tensors))
+        #     img = cam.reshape(self.num_envs, self.cfg.cam.width*self.cfg.cam.height)
+        #     # print('i',img)
+        #     # convert -inf to num
+        #     img[img == float("-Inf")] = -50
+        #     self.obs_buf[:,48:] = img
+        #     # print('o', self.obs_buf)
+            # print(self.camera_tensors)
+
+            self.f = []
+
+            for n in range(self.num_envs):
+                zer = torch.zeros(self.cfg.cam.num_obs_cam)
+                k = 0
+                zer = zer.to(self.device)
+                for i in range(10):
+                    for j in range (20):
+                        h = 65 + 5 * i
+                        w = 20 + 5 * j
+                        cam = self.camera_tensors[n]
+                        zer[k]=cam[h,w]
+                        k += 1
+                zer[zer == float("-Inf")] = -50
+                # print('z',zer.shape)
+                self.f.append(zer)
+
+            # print(self.f)
+            cam = torch.stack((self.f))
+            # print(cam, cam.shape)
+            self.obs_buf[:,48:] = cam
             # print('o', self.obs_buf)
 
 
@@ -892,8 +916,8 @@ class LeggedRobot(BaseTask):
                 # wrap camera tensor in a pytorch tensor
                 torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
                 # print('1',torch_camera_tensor.get_device())
-                # print("  Torch camera tensor device:", self.torch_camera_tensor.reshape(-1,).unsqueeze(0).shape)
-                # print("  Torch camera tensor shape:", self.torch_camera_tensor.shape)
+                # print("  Torch camera tensor device:", torch_camera_tensor.reshape(-1,).unsqueeze(0).shape)
+                # print("  Torch camera tensor shape:", torch_camera_tensor.shape)
                 # print("  Torch camera tensor", torch_camera_tensor)
                 self.camera_tensors.append(torch_camera_tensor)
                 

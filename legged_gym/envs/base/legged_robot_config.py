@@ -35,13 +35,13 @@ class LeggedRobotCfg(BaseConfig):
         camera = True
         monitor = False
         cnn = False
-        num_obs_cam = 400
-        width = 20
-        height = 20
+        num_obs_cam = 200
+        width = 128
+        height = 128
 
     class env:
-        num_envs = 2000
-        num_observations = 448 #235 or 48
+        num_envs = 1000
+        num_observations = 248 #235 or 48
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -243,7 +243,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         max_iterations = 1500 # number of policy updates
 
         # logging
-        save_interval = 150 # check for potential saves every this many iterations
+        save_interval = 100 # check for potential saves every this many iterations
         experiment_name = 'test'
         run_name = ''
         # load and resume

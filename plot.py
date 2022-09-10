@@ -25,6 +25,6 @@ def plot(runname):
     # display list
     plt.plot(reward)
 
-plot('Sep09_11-42-34_do')
+plot('Sep09_16-22-56_su_p')
 
 
