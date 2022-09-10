@@ -55,6 +55,9 @@ from .legged_robot_config import LeggedRobotCfg
 from torch import optim, nn
 from torchvision import models, transforms
 
+import cv2
+                
+
 
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -88,7 +91,7 @@ class LeggedRobot(BaseTask):
         self.init_done = True
 
         # add pre-trained CNN
-        if self.cfg.cam.camera:
+        if self.cfg.cam.camera and self.cfg.cam.cnn:
             class FeatureExtractor(nn.Module):
                 def __init__(self, model):
                     super(FeatureExtractor, self).__init__()
@@ -161,11 +164,9 @@ class LeggedRobot(BaseTask):
             # render sensors and refresh camera tensors
             self.gym.render_all_camera_sensors(self.sim)
             self.gym.start_access_image_tensors(self.sim)
-
+            
             # show camera image if monitor==True
-            if self.cfg.cam.monitor and not self.headless:
-                import cv2
-                import imageio
+            if (self.cfg.cam.monitor) and (not self.headless):
                 for i in range(self.num_envs):
                     cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
                 # if frame_no < 10000 and frame_no % 5 == 0:
@@ -175,7 +176,7 @@ class LeggedRobot(BaseTask):
                     # cam_img = self.gym.get_camera_image(self.sim, self.envs[i], self.camera_handles[i], gymapi.IMAGE_DEPTH)
                     cam_img = self.camera_tensors[i].detach().cpu().numpy()
                     # print('****************/n',i, cam_img)
-                    cv2.waitKey(300)
+                    cv2.waitKey(500)
                     cv2.imshow("env_{}".format(i+1), (cam_img*255).astype(np.uint8))
                     # imageio.imwrite(fname, (cam_img*255).astype(np.uint8))
                     # print("  Camera tensors shape:", len(self.camera_tensors))
@@ -318,7 +319,11 @@ class LeggedRobot(BaseTask):
             # print("  Torch self.obs_buf shape:", self.obs_buf.shape)
         # add noise if needed
         if self.add_noise:
-            noise_scale_vec = self.noise_scale_vec[:235]
+            if self.cfg.cam.camera and self.cfg.terrain.measure_heights==False:
+                noise_scale_vec = self.noise_scale_vec[:48]
+            else:
+                noise_scale_vec = self.noise_scale_vec[:235]
+            # print('s',self.obs_buf.shape, np.shape(noise_scale_vec))
             self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * noise_scale_vec
 
 
@@ -328,48 +333,56 @@ class LeggedRobot(BaseTask):
             zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam)
             zeros = zeros.to(self.device)
             self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
+            cam = torch.stack((self.camera_tensors))
+            img = cam.reshape(self.num_envs, self.cfg.cam.width*self.cfg.cam.height)
+            # print('i',img)
+            # convert -inf to num
+            img[img == float("-Inf")] = -50
+            self.obs_buf[:,48:] = img
+            # print('o', self.obs_buf)
 
 
-            # Iterate each image for each robot
-            for i in range(self.num_envs):
-                # read image
-                img = self.camera_tensors[i].reshape(1,self.cfg.cam.width,self.cfg.cam.height)
-                # convert -inf to num
-                img[img == float("-Inf")] = -50
-                # print('t',img.shape)
-                # softmax normalization
-                softmax = torch.nn.Softmax(dim = 1)
-                # convert to 3 channels to match vgg16 input requirement
-                img = torch.cat([img, img, img], dim=0)
-                # print('re',img)                
-                img = softmax(img)
-                # print(img)
-                # print(img[1].sum())
-                # transform to match vgg16 input requirement
-                transform1 = transforms.Compose([
-                        transforms.Scale(256),
-                        transforms.RandomCrop(224),
-                        transforms.RandomHorizontalFlip(),
-                        #transforms.ToTensor(), 
-                        transforms.Normalize(mean=[0.485, 0.456, 0.406], 
-                            std=[0.229, 0.224, 0.225])])
-                img = transform1(img)
-                # print('n',img.shape)
-                # a = img
-                # print(a)
-                # print(torch.mean(a))
-                # Reshape the image. PyTorch model reads 4-dimensional tensor
-                # [batch_size, channels, width, height]
-                img = img.reshape(1, 3, 224, 224)
-                img = img.to(self.device)
-                # We only extract features, so we don't need gradient
-                with torch.no_grad():
-                # Extract the feature from the image
-                    feature = self.new_model(img)
-                # print(feature.shape)
-                # add feature to obs_buf
-                self.obs_buf[i,235:] = feature
-                # print(self.obs_buf[i,235:])
+            if self.cfg.cam.cnn:
+                # Iterate each image for each robot
+                for i in range(self.num_envs):
+                    # read image
+                    img = self.camera_tensors[i].reshape(1,self.cfg.cam.width,self.cfg.cam.height)
+                    # convert -inf to num
+                    img[img == float("-Inf")] = -50
+                    # print('t',img.shape)
+                    # softmax normalization
+                    softmax = torch.nn.Softmax(dim = 1)
+                    # convert to 3 channels to match vgg16 input requirement
+                    img = torch.cat([img, img, img], dim=0)
+                    # print('re',img)                
+                    img = softmax(img)
+                    # print(img)
+                    # print(img[1].sum())
+                    # transform to match vgg16 input requirement
+                    transform1 = transforms.Compose([
+                            transforms.Scale(256),
+                            transforms.RandomCrop(224),
+                            transforms.RandomHorizontalFlip(),
+                            #transforms.ToTensor(), 
+                            transforms.Normalize(mean=[0.485, 0.456, 0.406], 
+                                std=[0.229, 0.224, 0.225])])
+                    img = transform1(img)
+                    # print('n',img.shape)
+                    # a = img
+                    # print(a)
+                    # print(torch.mean(a))
+                    # Reshape the image. PyTorch model reads 4-dimensional tensor
+                    # [batch_size, channels, width, height]
+                    img = img.reshape(1, 3, 224, 224)
+                    img = img.to(self.device)
+                    # We only extract features, so we don't need gradient
+                    with torch.no_grad():
+                    # Extract the feature from the image
+                        feature = self.new_model(img)
+                    # print(feature.shape)
+                    # add feature to obs_buf
+                    self.obs_buf[i,235:] = feature
+                    # print(self.obs_buf[i,235:])
 
 
 
@@ -631,8 +644,8 @@ class LeggedRobot(BaseTask):
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:48] = 0. # previous actions
         if self.cfg.terrain.measure_heights:
-            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
-        noise_vec[236:] = 0. # camera input
+            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements      
+        # print('n',noise_vec.shape)
         return noise_vec
 
     #----------------------------------------
