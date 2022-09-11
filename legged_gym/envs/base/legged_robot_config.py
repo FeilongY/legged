@@ -35,13 +35,13 @@ class LeggedRobotCfg(BaseConfig):
         camera = True
         monitor = False
         cnn = True
-        num_obs_cam = 64
+        num_obs_cam = 187
         width = 64
         height = 64
 
     class env:
-        num_envs = 200
-        num_observations = 112 #235 or 48 or 112
+        num_envs = 2000
+        num_observations = 235 #235 perceptive or 48 blind
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -58,9 +58,13 @@ class LeggedRobotCfg(BaseConfig):
         dynamic_friction = 1.0
         restitution = 0.
         # rough terrain only:
-        measure_heights = False
-        measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
+        measure_heights = True
+        # for CNN training
+        measured_points_x = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 ,0.9, 10.0, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6]
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
+        # LiDAR
+        # measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
+        # measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
         selected = False # select a unique terrain type and pass all arguments
         terrain_kwargs =  None # Dict of arguments for selected terrain
         max_init_terrain_level = 5 # starting curriculum state
@@ -243,7 +247,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         max_iterations = 1500 # number of policy updates
 
         # logging
-        save_interval = 100 # check for potential saves every this many iterations
+        save_interval = 150 # check for potential saves every this many iterations
         experiment_name = 'test'
         run_name = ''
         # load and resume

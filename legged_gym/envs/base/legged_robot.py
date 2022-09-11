@@ -28,6 +28,7 @@
 #
 # Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
+from tkinter import Variable
 from legged_gym import LEGGED_GYM_ROOT_DIR, envs
 from time import time
 from warnings import WarningMessage
@@ -52,6 +53,7 @@ from torch import optim, nn
 from torchvision import models, transforms
 
 import cv2
+
                 
 
 
@@ -98,7 +100,7 @@ class LeggedRobot(BaseTask):
                                             nn.Conv2d(64, 64, kernel_size=3, stride=1),
                                             nn.ReLU(True)
                                         )
-                    self.classifier = nn.Sequential(nn.Linear(4*4*64, 64))
+                    self.classifier = nn.Sequential(nn.Linear(4*4*64, 187))
 
                 def forward(self, x):
                     x = self.cnn(x)
@@ -107,6 +109,9 @@ class LeggedRobot(BaseTask):
                     return x
             
             self.cnn_model = CNNFeature().to(self.device)
+            self.criterion = nn.MSELoss().to(self.device)
+            self.optimizer = optim.Adam(self.cnn_model.parameters(), lr=0.0001)
+            # self.optimizer = optim.SGD(self.cnn_model.parameters(), lr=0.001, momentum=0.9)
 
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
@@ -296,56 +301,68 @@ class LeggedRobot(BaseTask):
         # add perceptive inputs if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
-            self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
+            if self.cfg.cam.camera==False:
+                self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
             # print("  Torch self.obs_buf device:", self.obs_buf.device)
             # print("  Torch heights shape:", heights.shape)
             # print("  Torch self.obs_buf shape:", self.obs_buf.shape)
         # add noise if needed
         if self.add_noise:
-            if self.cfg.cam.camera and self.cfg.terrain.measure_heights==False:
+            if (self.cfg.cam.camera):
                 noise_scale_vec = self.noise_scale_vec[:48]
-            else:
+            elif (self.cfg.terrain.measure_heights) and (self.cfg.cam.camera==False):
                 noise_scale_vec = self.noise_scale_vec[:235]
             # print('s',self.obs_buf.shape, np.shape(noise_scale_vec))
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * noise_scale_vec
+                self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * noise_scale_vec
 
 
         # read camera tensors
         if self.cfg.cam.camera:
-            # increase obs_buffer size to integrate camera input
-            zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam)
-            zeros = zeros.to(self.device)
-            self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
+            # # increase obs_buffer size to integrate camera input
+            # zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam)
+            # zeros = zeros.to(self.device)
+            # self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
 
             if self.cfg.cam.cnn:
+                self.cnn_model.train()
                 # Iterate each image for each robot
-                for i in range(self.num_envs):
-                    img = self.camera_tensors[i].reshape(1,self.cfg.cam.width,self.cfg.cam.height)
-                    # convert -inf to num
-                    img[img == float("-Inf")] = -100
-                    # softmax = torch.nn.Softmax(dim = 1)
-                    # convert to 3 channels to match vgg16 input requirement
-                    # img = torch.cat([img, img, img], dim=0)
-                    # img = softmax(img)
-                    # transform to match vgg16 input requirement
-                    transform = transforms.Compose([
-                            # transforms.Scale(256),
-                            # transforms.RandomCrop(224),
-                            transforms.RandomHorizontalFlip(),
-                            transforms.Normalize(mean=[0],
-                                std=[1])])
-                    img = transform(img)
-                    # Reshape the image. PyTorch model reads 4-dimensional tensor [batch_size, channels, width, height]
-                    img = img.reshape(1, 1, 64, 64)
-                    img = img.to(self.device)
-                    # We only extract features, so we don't need gradient
-                    # with torch.no_grad():
-                    # Extract the feature from the image
-                    feature = self.cnn_model(img)   
-                    # print('img',img)
-                    # print('f',feature)
-                    # add feature to obs_buf
-                    self.obs_buf[i,48:] = feature
+                # for i in range(self.num_envs):
+                img = torch.stack((self.camera_tensors)).reshape(self.num_envs,1,self.cfg.cam.width,self.cfg.cam.height)
+                img = img.to(self.device)
+                # convert -inf to num
+                img[img == float("-Inf")] = -100
+                # softmax = torch.nn.Softmax(dim = 1)
+                # convert to 3 channels to match vgg16 input requirement
+                # img = torch.cat([img, img, img], dim=0)
+                # img = softmax(img)
+                # transform to match vgg16 input requirement
+                transform = transforms.Compose([
+                        # transforms.Scale(256),
+                        # transforms.RandomCrop(224),
+                        transforms.RandomHorizontalFlip(),
+                        transforms.Normalize(mean=[0],
+                            std=[1])])
+                img = transform(img)
+                # print(img.shape)
+                # Reshape the image. PyTorch model reads 4-dimensional tensor [batch_size, channels, width, height]
+                # img = img.reshape(1, 1, 64, 64)
+                # We only extract features, so we don't need gradient
+                # with torch.no_grad():
+                # clearing the Gradients of the model parameters
+                self.optimizer.zero_grad()
+                # Extract the feature from the image
+                feature = self.cnn_model(img)
+                loss =  self.criterion(feature, heights)
+                running_loss = loss.item()
+                # print('r',running_loss)
+                loss = loss.clone().requires_grad_(True)
+                loss.backward()
+                self.optimizer.step()  
+                # print('img',img)
+                # print('f',feature)
+                # add feature to obs_buf
+                self.obs_buf = torch.cat((self.obs_buf, feature), dim=-1)
+
 
 
 
