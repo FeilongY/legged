@@ -28,6 +28,8 @@
 #
 # Copyright (c) 2021 ETH Zurich, Nikita Rudin
 
+from tarfile import DEFAULT_FORMAT
+from turtle import forward
 from legged_gym import LEGGED_GYM_ROOT_DIR, envs
 from time import time
 from warnings import WarningMessage
@@ -50,13 +52,7 @@ from .legged_robot_config import LeggedRobotCfg
 
 from torch import optim, nn
 from torchvision import models, transforms
-
 import cv2
-                
-
-
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 class LeggedRobot(BaseTask):
     def __init__(self, cfg: LeggedRobotCfg, sim_params, physics_engine, sim_device, headless):
@@ -86,19 +82,19 @@ class LeggedRobot(BaseTask):
         self._prepare_reward_function()
         self.init_done = True
 
-        # add CNN
+        # add pre-trained CNN
         if self.cfg.cam.camera and self.cfg.cam.cnn:
             class CNNFeature(nn.Module):
-                def __init__(self):
+                def __init__(self, model):
                     super(CNNFeature, self).__init__()
-                    self.cnn = nn.Sequential(nn.Conv2d(1, 32, kernel_size=8, stride=4),
+                    self.cnn = nn.Sequential(nn.Conv2d(4, 32, kernel_size=8, stride=4),
                                             nn.ReLU(True),
                                             nn.Conv2d(32, 64, kernel_size=4, stride=2),
                                             nn.ReLU(True),
                                             nn.Conv2d(64, 64, kernel_size=3, stride=1),
                                             nn.ReLU(True)
                                         )
-                    self.classifier = nn.Sequential(nn.Linear(4*4*64, 64))
+                    self.classifier = nn.Sequential(nn.Linear(7*7*64, 64))
 
                 def forward(self, x):
                     x = self.cnn(x)
@@ -108,6 +104,7 @@ class LeggedRobot(BaseTask):
             
             self.cnn_model = CNNFeature().to(self.device)
 
+            
     def step(self, actions):
         """ Apply actions, simulate, call self.post_physics_step()
 
@@ -117,30 +114,24 @@ class LeggedRobot(BaseTask):
         clip_actions = self.cfg.normalization.clip_actions
         self.actions = torch.clip(actions, -clip_actions, clip_actions).to(self.device)
         # step physics and render each frame
-        self.render()     
-
-
+        self.render()
         for _ in range(self.cfg.control.decimation):
             self.torques = self._compute_torques(self.actions).view(self.torques.shape)
             self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(self.torques))
             self.gym.simulate(self.sim)
-            # if self.device == 'cpu':
-            #     self.gym.fetch_results(self.sim, True)
-            self.gym.fetch_results(self.sim, True)
+            if self.device == 'cpu':
+                self.gym.fetch_results(self.sim, True)
             self.gym.refresh_dof_state_tensor(self.sim)
-
+        
         # render cameras and fetch tensors
         if self.cfg.cam.camera:           
-
             """ # image directory
             img_dir = "interop_images"
             if not os.path.exists(img_dir):
                 os.mkdir(img_dir) """     
 
             # refresh state data in the tensor
-
             self.gym.refresh_rigid_body_state_tensor(self.sim)
-
             self.gym.step_graphics(self.sim)
 
 
@@ -152,17 +143,10 @@ class LeggedRobot(BaseTask):
             if (self.cfg.cam.monitor) and (not self.headless):
                 for i in range(self.num_envs):
                     cv2.namedWindow("env_{}".format(i+1), cv2.WINDOW_NORMAL)
-                # if frame_no < 10000 and frame_no % 5 == 0:
                 for i in range(self.num_envs):
-                    # write tensor to image
-                    # fname = os.path.join(img_dir, "cam-%03d.png" % (i))
-                    # cam_img = self.gym.get_camera_image(self.sim, self.envs[i], self.camera_handles[i], gymapi.IMAGE_DEPTH)
                     cam_img = self.camera_tensors[i].detach().cpu().numpy()
-                    # print('****************/n',i, cam_img)
                     cv2.waitKey(500)
                     cv2.imshow("env_{}".format(i+1), (cam_img*255).astype(np.uint8))
-                    # imageio.imwrite(fname, (cam_img*255).astype(np.uint8))
-                    # print("  Camera tensors shape:", len(self.camera_tensors))
                 
             self.gym.end_access_image_tensors(self.sim)
 
@@ -290,16 +274,10 @@ class LeggedRobot(BaseTask):
                                     self.dof_vel * self.obs_scales.dof_vel,
                                     self.actions
                                     ),dim=-1)
-        #  print("  Torch self.obs_buf shape:", self.obs_buf.shape)
-        # print("g", self.projected_gravity, self.projected_gravity.shape)
-
         # add perceptive inputs if not blind
         if self.cfg.terrain.measure_heights:
             heights = torch.clip(self.root_states[:, 2].unsqueeze(1) - 0.5 - self.measured_heights, -1, 1.) * self.obs_scales.height_measurements
             self.obs_buf = torch.cat((self.obs_buf, heights), dim=-1)
-            # print("  Torch self.obs_buf device:", self.obs_buf.device)
-            # print("  Torch heights shape:", heights.shape)
-            # print("  Torch self.obs_buf shape:", self.obs_buf.shape)
         # add noise if needed
         if self.add_noise:
             if self.cfg.cam.camera and self.cfg.terrain.measure_heights==False:
@@ -307,15 +285,31 @@ class LeggedRobot(BaseTask):
             else:
                 noise_scale_vec = self.noise_scale_vec[:235]
             # print('s',self.obs_buf.shape, np.shape(noise_scale_vec))
-            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * noise_scale_vec
-
-
+            self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * self.noise_scale_vec
         # read camera tensors
         if self.cfg.cam.camera:
             # increase obs_buffer size to integrate camera input
-            zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam)
-            zeros = zeros.to(self.device)
+            zeros = torch.zeros(self.num_envs, self.cfg.cam.num_obs_cam).to(self.device)
             self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
+
+            # self.f = []
+
+            # for n in range(self.num_envs):
+            #     zer = torch.zeros(self.cfg.cam.num_obs_cam)
+            #     k = 0
+            #     zer = zer.to(self.device)
+            #     for i in range(10):
+            #         for j in range (10):
+            #             h = 1 + 5 * i  
+            #             w = 1 + 5 * j
+            #             cam = self.camera_tensors[n]
+            #             zer[k]=cam[h,w]
+            #             k += 1
+            #     zer[zer == float("-Inf")] = -50
+            #     self.f.append(zer)
+
+            # cam = torch.stack((self.f))
+            # self.obs_buf[:,48:] = cam
 
             if self.cfg.cam.cnn:
                 # Iterate each image for each robot
@@ -328,39 +322,27 @@ class LeggedRobot(BaseTask):
                     # img = torch.cat([img, img, img], dim=0)
                     # img = softmax(img)
                     # transform to match vgg16 input requirement
-                    transform = transforms.Compose([
-                            # transforms.Scale(256),
-                            # transforms.RandomCrop(224),
+                    transform1 = transforms.Compose([
+                            transforms.Scale(256),
+                            transforms.RandomCrop(224),
                             transforms.RandomHorizontalFlip(),
                             transforms.Normalize(mean=[0],
                                 std=[1])])
-                    img = transform(img)
+                    img = transform1(img)
                     # Reshape the image. PyTorch model reads 4-dimensional tensor [batch_size, channels, width, height]
-                    img = img.reshape(1, 1, 64, 64)
+                    # img = img.reshape(1, 3, 224, 224)
                     img = img.to(self.device)
                     # We only extract features, so we don't need gradient
                     # with torch.no_grad():
                     # Extract the feature from the image
-                    feature = self.cnn_model(img)   
-                    # print('img',img)
-                    # print('f',feature)
+                    feature = self.cnn_model(img)
                     # add feature to obs_buf
                     self.obs_buf[i,48:] = feature
-
-
-
-
+            
     def create_sim(self):
-        """ Creates simulation, terrain and environments
+        """ Creates simulation, terrain and evironments
         """
-        # self.sim_params.use_gpu_pipeline = True
-
-        # self.sim_device_id = 0
-        # self.graphics_device_id = 0
-        # global graphics_device_id
-        # print('gpu', self.graphics_device_id)
-
-
+        self.graphics_device_id = 0
         self.up_axis_idx = 2 # 2 for z, 1 for y -> adapt gravity accordingly
         self.sim = self.gym.create_sim(self.sim_device_id, self.graphics_device_id, self.physics_engine, self.sim_params)
         mesh_type = self.cfg.terrain.mesh_type
@@ -607,8 +589,7 @@ class LeggedRobot(BaseTask):
         noise_vec[24:36] = noise_scales.dof_vel * noise_level * self.obs_scales.dof_vel
         noise_vec[36:48] = 0. # previous actions
         if self.cfg.terrain.measure_heights:
-            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements      
-        # print('n',noise_vec.shape)
+            noise_vec[48:235] = noise_scales.height_measurements* noise_level * self.obs_scales.height_measurements
         return noise_vec
 
     #----------------------------------------
@@ -797,14 +778,12 @@ class LeggedRobot(BaseTask):
         start_pose = gymapi.Transform()
         start_pose.p = gymapi.Vec3(*self.base_init_state[:3])
 
-
         # add camera properties
         if self.cfg.cam.camera:
             camera_props = gymapi.CameraProperties()
             camera_props.width = self.cfg.cam.width
             camera_props.height = self.cfg.cam.height
             camera_props.enable_tensors = True
-
             # add camera sensor
             self.camera_handles = []
             self.camera_tensors = []
@@ -814,8 +793,6 @@ class LeggedRobot(BaseTask):
         env_upper = gymapi.Vec3(0., 0., 0.)
         self.actor_handles = []
         self.envs = []
-
-        
         for i in range(self.num_envs):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
@@ -836,17 +813,14 @@ class LeggedRobot(BaseTask):
 
             # add camera sensors
             if self.cfg.cam.camera:
-                # create camera instance               
+                # create camera instance              
                 camera_handle = self.gym.create_camera_sensor(env_handle, camera_props)
                 # attach camera to robot
                 local_transform = gymapi.Transform()
                 local_transform.p = gymapi.Vec3(0.25,0,0.1)     # a fixed offset from the rigid body
                 local_transform.r = gymapi.Quat.from_axis_angle(gymapi.Vec3(1,0,0), np.radians(0.0))
                 # print(f"Cam Handle: {camera_handle}") # Prints -1
-                # self.body_handle = self.gym.get_actor_rigid_body_handle(env_handle, actor_handle, 0)
                 self.gym.attach_camera_to_body(camera_handle, env_handle, actor_handle, local_transform, gymapi.FOLLOW_TRANSFORM)
-                
-                # print('handle', self.camera_handle)
                 self.camera_handles.append(camera_handle)
         
                 # camera tensor
@@ -854,14 +828,7 @@ class LeggedRobot(BaseTask):
                 
                 # wrap camera tensor in a pytorch tensor
                 torch_camera_tensor = gymtorch.wrap_tensor(camera_tensor)
-                # print('1',torch_camera_tensor.get_device())
-                # print("  Torch camera tensor device:", torch_camera_tensor.reshape(-1,).unsqueeze(0).shape)
-                # print("  Torch camera tensor shape:", torch_camera_tensor.shape)
-                # print("  Torch camera tensor", torch_camera_tensor)
                 self.camera_tensors.append(torch_camera_tensor)
-                
-
-            
 
         self.feet_indices = torch.zeros(len(feet_names), dtype=torch.long, device=self.device, requires_grad=False)
         for i in range(len(feet_names)):
