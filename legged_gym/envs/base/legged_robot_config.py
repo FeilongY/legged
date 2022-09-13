@@ -32,7 +32,7 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class cam:
-        camera = False
+        camera = True
         monitor = False
         cnn = True
         num_obs_cam = 187
@@ -40,8 +40,8 @@ class LeggedRobotCfg(BaseConfig):
         height = 64
 
     class env:
-        num_envs = 1000
-        num_observations = 48  #235 perceptive or 48 blind
+        num_envs = 2000
+        num_observations = 235  #235 perceptive or 48 blind
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -58,7 +58,7 @@ class LeggedRobotCfg(BaseConfig):
         dynamic_friction = 1.0
         restitution = 0.
         # rough terrain only:
-        measure_heights = False
+        measure_heights = True
         # for CNN training
         measured_points_x = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 ,0.9, 10.0, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6]
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
@@ -73,7 +73,7 @@ class LeggedRobotCfg(BaseConfig):
         num_rows= 10 # number of terrain rows (levels)
         num_cols = 20 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete obstacles, stepping stones, gap, pit]
-        terrain_proportions = [0., 1., 0., 0., 0., 0., 0., 0.]
+        terrain_proportions = [0., 0., 0., 0., 0., 1., 0., 0.]
         # terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
         # trimesh only:
         slope_treshold = 0.75 # slopes above this threshold will be corrected to vertical surfaces
@@ -247,7 +247,7 @@ class LeggedRobotCfgPPO(BaseConfig):
         max_iterations = 1500 # number of policy updates
 
         # logging
-        save_interval = 1000 # check for potential saves every this many iterations
+        save_interval = 100 # check for potential saves every this many iterations
         experiment_name = 'test'
         run_name = ''
         # load and resume
