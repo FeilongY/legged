@@ -32,7 +32,7 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class cam:
-        camera = True
+        camera = False
         monitor = False
         cnn = True
         num_obs_cam = 187
@@ -60,7 +60,7 @@ class LeggedRobotCfg(BaseConfig):
         # rough terrain only:
         measure_heights = True
         # for CNN training
-        measured_points_x = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 ,0.9, 10.0, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6]
+        measured_points_x = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 ,0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
         # LiDAR
         #measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
