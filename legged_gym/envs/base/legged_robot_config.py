@@ -32,7 +32,7 @@ from .base_config import BaseConfig
 
 class LeggedRobotCfg(BaseConfig):
     class cam:
-        camera = True
+        camera = False
         monitor = False
         cnn = True
         num_obs_cam = 187
@@ -40,8 +40,8 @@ class LeggedRobotCfg(BaseConfig):
         height = 64
 
     class env:
-        num_envs = 2000
-        num_observations = 235  #235 perceptive or 48 blind
+        num_envs = 1000
+        num_observations = 48  #235 perceptive or 48 blind
         num_privileged_obs = None # if not None a priviledge_obs_buf will be returned by step() (critic obs for assymetric training). None is returned otherwise 
         num_actions = 12
         env_spacing = 3.  # not used with heightfields/trimeshes 
@@ -58,7 +58,7 @@ class LeggedRobotCfg(BaseConfig):
         dynamic_friction = 1.0
         restitution = 0.
         # rough terrain only:
-        measure_heights = True
+        measure_heights = False
         # for CNN training
         measured_points_x = [0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 ,0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6]
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
