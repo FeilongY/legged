@@ -88,7 +88,7 @@ class LeggedRobot(BaseTask):
         self._prepare_reward_function()
         self.init_done = True
 
-        # add CNN
+        # add CNN for depth image feature extraction
         if self.cfg.cam.camera and self.cfg.cam.cnn:
             class CNNFeature(nn.Module):
                 def __init__(self):
@@ -306,6 +306,7 @@ class LeggedRobot(BaseTask):
             # print("  Torch self.obs_buf device:", self.obs_buf.device)
             # print("  Torch heights shape:", heights.shape)
             # print("  Torch self.obs_buf shape:", self.obs_buf.shape)
+
         # add noise if needed
         if self.add_noise:
             if (self.cfg.cam.camera):
@@ -315,7 +316,6 @@ class LeggedRobot(BaseTask):
             # print('s',self.obs_buf.shape, np.shape(noise_scale_vec))
                 self.obs_buf += (2 * torch.rand_like(self.obs_buf) - 1) * noise_scale_vec
 
-
         # read camera tensors
         if self.cfg.cam.camera:
             # # increase obs_buffer size to integrate camera input
@@ -324,9 +324,9 @@ class LeggedRobot(BaseTask):
             # self.obs_buf = torch.cat((self.obs_buf, zeros), dim=-1)
 
             if self.cfg.cam.cnn:
+                # train CNN
                 self.cnn_model.train()
-                # Iterate each image for each robot
-                # for i in range(self.num_envs):
+                # Reshape the image. PyTorch model reads 4-dimensional tensor [batch_size, channels, width, height]
                 img = torch.stack((self.camera_tensors)).reshape(self.num_envs,1,self.cfg.cam.width,self.cfg.cam.height)
                 img = img.to(self.device)
                 # convert -inf to num
@@ -335,7 +335,8 @@ class LeggedRobot(BaseTask):
                 # convert to 3 channels to match vgg16 input requirement
                 # img = torch.cat([img, img, img], dim=0)
                 # img = softmax(img)
-                # transform to match vgg16 input requirement
+
+                # transform to match CNN input requirement
                 transform = transforms.Compose([
                         # transforms.Scale(256),
                         # transforms.RandomCrop(224),
@@ -344,10 +345,7 @@ class LeggedRobot(BaseTask):
                             std=[1])])
                 img = transform(img)
                 # print(img.shape)
-                # Reshape the image. PyTorch model reads 4-dimensional tensor [batch_size, channels, width, height]
-                # img = img.reshape(1, 1, 64, 64)
-                # We only extract features, so we don't need gradient
-                # with torch.no_grad():
+                
                 # clearing the Gradients of the model parameters
                 self.optimizer.zero_grad()
                 # Extract the feature from the image
@@ -358,8 +356,6 @@ class LeggedRobot(BaseTask):
                 loss = loss.clone().requires_grad_(True)
                 loss.backward()
                 self.optimizer.step()  
-                # print('img',img)
-                # print('f',feature)
                 # add feature to obs_buf
                 self.obs_buf = torch.cat((self.obs_buf, feature), dim=-1)
 
