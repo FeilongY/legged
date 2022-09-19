@@ -1,12 +1,12 @@
 # Deep Reinforcement Learning for Advanced Quadrupedal Locomotion from Vision #
-This repository provides the environment used to train Unitree A1 to walk on rough terrain using NVIDIA's Isaac Gym. This is the code for my master project at UCL. I added a new depth camera component to the robot, and compared the performance with blind robots.
-**Maintainer**: Feilong Yan
+This repository provides the environment used to train Unitree A1 to walk on rough terrain using NVIDIA's Isaac Gym. This is the code for my master project at UCL. I added a new depth camera component to the robot, and compared the performance with blind robots.  
+**Maintainer**: Feilong Yan  
 **Contact**: feilonguk@gmail.com
 
 ### Foundation ###
-My master project is based on legged gym project at Robotic Systems Lab, ETH Zurich.
-Project website: https://leggedrobotics.github.io/legged_gym/
-Paper: https://arxiv.org/abs/2109.11978
+My master project is based on legged gym project at Robotic Systems Lab, ETH Zurich.  
+Project website: https://leggedrobotics.github.io/legged_gym/  
+Paper: https://arxiv.org/abs/2109.11978  
 Code: https://github.com/leggedrobotics/legged_gym
 
 ### Installation ###
@@ -21,9 +21,9 @@ Code: https://github.com/leggedrobotics/legged_gym
 4. Install rsl_rl (PPO implementation)
    - Clone https://github.com/leggedrobotics/rsl_rl
    -  `cd rsl_rl && pip install -e .` 
-5. Install legged
+5. Install legged_project
     - Clone this repository
-   - `cd legged && pip install -e .`
+   - `cd legged_project && pip install -e .`
 
 ### CODE STRUCTURE ###
 1. Each environment is defined by an env file (`legged_robot.py`) and a config file (`legged_robot_config.py`). The config file contains two classes: one conatianing all the environment parameters (`LeggedRobotCfg`) and one for the training parameters (`LeggedRobotCfgPPo`).  
