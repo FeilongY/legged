@@ -1,5 +1,5 @@
 # Deep Reinforcement Learning for Advanced Quadrupedal Locomotion from Vision #
-This repository provides the environment used to train Unitree A1 to walk on rough terrain using NVIDIA's Isaac Gym. This is the code for my master project at UCL. I added a new depth camera component to the robot, and compared the performance with blind robots.  
+This repository provides the environment used to train Unitree A1 to walk on rough terrain using NVIDIA's Isaac Gym. This is the code for my master project at UCL. I added new perceptive components to the robot, and compared the performance with blind robots.  
 **Maintainer**: Feilong Yan  
 **Contact**: feilonguk@gmail.com
 
