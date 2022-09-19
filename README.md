@@ -54,8 +54,8 @@ Code: https://github.com/leggedrobotics/legged_gym
     - Other runs/model iteration can be selected by setting `load_run` and `checkpoint` in the train config.
     
 ### Depth sensor ###
-To use the depth camera input, some changes need to be made in the config file (`legged_robot_config.py`). The setting in 'class cam' can turn on the camera sensors, use CNN network for feature extraction, and monitor the captured images.
-If depth camera inputs are added, the 'measure_heights' in 'class terrain' should be set True. And the 'measured_points' are for CNN training as ground-truth labels.
+To use the depth camera input, some changes need to be made in the config file (`legged_robot_config.py`). The setting in `class cam` can turn on the camera sensors, use CNN network for feature extraction, and monitor the captured images.  
+If depth camera inputs are added, the `measure_heights` in `class terrain` should be set `True`. And the `measured_points` are for CNN training as ground-truth labels.
 
 ### Troubleshooting ###
 1. If you get the following error: `ImportError: libpython3.8m.so.1.0: cannot open shared object file: No such file or directory`, do: `sudo apt install libpython3.8`
